@@ -28,12 +28,12 @@ void setup()
     Serial.begin(115200);
     esp8266.begin(115200);
 
-    // pinMode(LedIndicator, OUTPUT);
-    // pinMode(longRelay, OUTPUT);
-    // pinMode(shortRelay, OUTPUT);
-    // digitalWrite(LedIndicator, LOW);
-    // digitalWrite(longRelay, LOW);
-    // digitalWrite(shortRelay, LOW);
+    pinMode(LedIndicator, OUTPUT);
+    pinMode(longRelay, OUTPUT);
+    pinMode(shortRelay, OUTPUT);
+    digitalWrite(LedIndicator, LOW);
+    digitalWrite(longRelay, LOW);
+    digitalWrite(shortRelay, LOW);
     setupESP();
     if (!rtc.begin())
     {
@@ -88,9 +88,9 @@ void loop()
                 Serial.println("\ncommand: ");
                 Serial.println(command);
                 Serial.println("\n");
-                // digitalWrite(longRelay, HIGH);
-                // delay(2000);
-                // digitalWrite(longRelay, LOW);
+                digitalWrite(longRelay, HIGH);
+                delay(2000);
+                digitalWrite(longRelay, LOW);
                 content = "heating";
             }
             else if (command == '2')
@@ -98,9 +98,9 @@ void loop()
                 Serial.println("\ncommand: ");
                 Serial.println(command);
                 Serial.println("\n");
-                // digitalWrite(shortRelay, HIGH);
-                // delay(2000);
-                // digitalWrite(shortRelay, LOW);
+                digitalWrite(shortRelay, HIGH);
+                delay(2000);
+                digitalWrite(shortRelay, LOW);
                 content = "heating";
             }
         }
@@ -146,18 +146,18 @@ void loop()
         closeCommand += connectionId;
         closeCommand += "\r\n";
         sendCommand(closeCommand, 1000, DEBUG);
-        //  digitalWrite(LedIndicator, LOW);
-        //  delay(25000);
-        //  Heated = true;
+        digitalWrite(LedIndicator, LOW);
+        delay(25000);
+        Heated = true;
     }
 
     for (int i = 0; i < coffeeCounter; i++)
     {
         if (coffeeDays[now.dayOfTheWeek()] && (now.hour() == coffeeHours[i] && now.minute() == coffeeMinutes[i]))
         {
-            // digitalWrite(LedIndicator, HIGH);
-            // delay(1000);
-            // digitalWrite(LedIndicator, LOW);
+            digitalWrite(LedIndicator, HIGH);
+            delay(1000);
+            digitalWrite(LedIndicator, LOW);
             Serial.println("It worked?");
             delay(20000);
 
@@ -190,7 +190,8 @@ void setupESP()
 {
     sendCommand("AT+RST\r\n", 2000, DEBUG);
     sendCommand("AT+CWJAP=\"Hacked device\",\"drowpass\"\r\n", 6000, DEBUG);
-    sendCommand("AT+CIPSTA?\r\n", 1000, DEBUG); // get ip address
+    sendCommand("AT+CIPSTA=\"170.20.10.5\"\r\n", 1000, DEBUG); // get ip address
+    sendCommand("AT+CIPSTA?\r\n", 1000, DEBUG);
     sendCommand("AT+CIPMUX=1\r\n", 1000, DEBUG); // configure for multiple connections
     sendCommand("AT+CIPSERVER=1,80\r\n", 1000, DEBUG);
     Serial.println("Server Ready");
