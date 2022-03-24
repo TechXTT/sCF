@@ -219,10 +219,6 @@ boolean read_until_ESP(const char keyword1[], int key_size, int timeout_val, byt
     }                 // while !avail
 
     data_in[i] = ESP8266.read(); // save the byte to the buffer 'data_in[]
-    if (keyword1 == keyword_t1) {
-      Serial.print(data_in[key_size - 1]);
-      Serial.print(",");
-    }
     if (mode == 1)
     { // this will save all of the data to the scratch_data_from
       scratch_data_from_ESP[scratch_length] = data_in[i]; // starts at 1
@@ -266,9 +262,6 @@ boolean read_until_ESP(const char keyword1[], int key_size, int timeout_val, byt
     }     // while !avail
 
     data_in[key_size - 1] = ESP8266.read(); // save the new data in the last position in the buffer
-    if (keyword1 == keyword_t1) {
-      Serial.print(data_in[key_size - 1]);
-    }
     // Serial.write(data_in[key_size-1]);
 
     if (mode == 1)
