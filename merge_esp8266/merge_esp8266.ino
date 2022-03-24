@@ -281,6 +281,23 @@ boolean read_until_ESP(const char keyword1[], int key_size, int timeout_val, byt
 
 } // read until ESP
 
+boolean read_ESP(int timeout_val) {
+  long int time = millis();
+  int scratch_length = 1;
+  while ((time + timeout_val) > millis()) {
+    while (ESP8266.available()) {
+      char c = ESP8266.read();
+      scratch_data_from_ESP[scratch_length] = c; // starts at 1
+      scratch_data_from_ESP[0] = scratch_length;          // [0] is used to hold the length of the array
+      scratch_length++;                                   // increment the length
+    }
+  }
+  Serial.println("read_ESP response: ");
+  for ( int i = 1; i < scratch_data_from_ESP[0] + 1; i++)
+    Serial.print(scratch_data_from_ESP[i]);
+  Serial.println("");
+}
+
 // pretty simple function - read everything out of the serial buffer and whats coming and get rid of it
 void serial_dump_ESP()
 {
@@ -419,11 +436,6 @@ void send_to_server_5()
         }             // b1
       }                 //##
     } else {               // t1
-      Serial.println(" NO DATA 2 RESPONSE : ");
-      for ( int i = 1; i < scratch_data_from_ESP[0] + 1; i++)
-        Serial.print(scratch_data_from_ESP[i]);
-
-      Serial.println("");
     }
     /*
       //Serial.println("connected ESP");
@@ -532,6 +544,7 @@ boolean connect_ESP()
       if (read_until_ESP(keyword_sendok, sizeof(keyword_sendok), 5000, 1))
       { // go wait for 'SEND OK'
         Serial.println("SENT"); // yay, it was sent
+        read_ESP(5000);
         return 1;               // get out of here, data is about to fly out of the ESP
       }                           // got the SEND OK
       else                        // SEND OK
