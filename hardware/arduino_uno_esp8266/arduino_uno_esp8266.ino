@@ -1,11 +1,8 @@
 // Date and time functions using a DS1307 RTC connected via I2C and Wire lib
-#include <Wire.h>
-#include <RTClib.h>
 #include <SoftwareSerial.h>
 
 #define DEBUG true
 
-RTC_DS1307 rtc;
 SoftwareSerial esp8266(2, 3);
 
 const int longRelay = 10;
@@ -35,24 +32,10 @@ void setup()
     digitalWrite(longRelay, LOW);
     digitalWrite(shortRelay, LOW);
     setupESP();
-    if (!rtc.begin())
-    {
-        Serial.println("Couldn't find RTC");
-    }
-    if (!rtc.isrunning())
-    {
-        Serial.println("RTC is NOT running!");
-        // following line sets the RTC to the date & time this sketch was compiled
-        rtc.adjust(DateTime(__DATE__, __TIME__));
-        // This line sets the RTC with an explicit date & time, for example to set
-        // January 21, 2014 at 3am you would call:
-        // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
-    }
 }
 
 void loop()
 {
-    DateTime now = rtc.now();
 
     // Serial.print(now.year(), DEC);
     // Serial.print('/');
@@ -139,31 +122,29 @@ void loop()
                 coffeeMinutes[coffeeCounter] = command_int;
             }
         }
-        Serial.println(content);
-        sendHTTPResponse(connectionId, content);
-        // make close command
-        String closeCommand = "AT+CIPCLOSE=";
-        closeCommand += connectionId;
-        closeCommand += "\r\n";
-        sendCommand(closeCommand, 1000, DEBUG);
+        Serial.println("send HTTP Request");
+        sendHTTPResponse(connectionId);
+        // close connection
+        sendCommand("AT+CIPCLOSE=0\r\n", 1000, DEBUG);
+
         digitalWrite(LedIndicator, LOW);
         //  delay(25000);
         Heated = true;
     }
 
-    for (int i = 0; i < coffeeCounter; i++)
-    {
-        if (coffeeDays[now.dayOfTheWeek()] && (now.hour() == coffeeHours[i] && now.minute() == coffeeMinutes[i]))
-        {
-            digitalWrite(LedIndicator, HIGH);
-            delay(1000);
-            digitalWrite(LedIndicator, LOW);
-            Serial.println("It worked?");
-            delay(20000);
-
-            break;
-        }
-    }
+    //    for (int i = 0; i < coffeeCounter; i++)
+    //    {
+    //        if (coffeeDays[now.dayOfTheWeek()] && (now.hour() == coffeeHours[i] && now.minute() == coffeeMinutes[i]))
+    //        {
+    //            digitalWrite(LedIndicator, HIGH);
+    //            delay(1000);
+    //            digitalWrite(LedIndicator, LOW);
+    //            Serial.println("It worked?");
+    //            delay(20000);
+    //
+    //            break;
+    //        }
+    //    }
 
     // calculate a date which is 7 days and 30 seconds into the future
     //  DateTime future (now + TimeSpan(7, 12, 30, 6));
@@ -191,8 +172,10 @@ void setupESP()
     sendCommand("AT+RST\r\n", 2000, DEBUG);
     sendCommand("AT+CWJAP=\"LightCore 2.5Ghz\",\"avgust14martin\"\r\n", 3000, DEBUG);
     sendCommand("AT+CIPSTA=\"192.168.88.200\"\r\n", 1000, DEBUG); // get ip address
-    sendCommand("AT+CIPMUX=1\r\n", 1000, DEBUG);                  // configure for multiple connections
-    sendCommand("AT+CIPSERVER=1,80\r\n", 1000, DEBUG);
+    sendCommand("AT+CIFSR\r\n", 1000, DEBUG);
+    sendCommand("AT+CWMODE=3\r\n", 1000, DEBUG);
+    sendCommand("AT+CIPMUX=1\r\n", 1000, DEBUG);       // configure for multiple connections
+    sendCommand("AT+CIPSERVER=1,80\r\n", 1000, DEBUG); // set server
     Serial.println("Server Ready");
 }
 
@@ -205,52 +188,94 @@ void setupESP()
 String sendData(String command, const int timeout, boolean debug)
 {
     String response = "";
-    int dataSize = command.length();
-    char data[dataSize];
-    command.toCharArray(data, dataSize);
-    esp8266.write(data, dataSize); // send the read character to the esp8266
+    Serial.println("Sending: " + command);
+    esp8266.println(command);
     if (debug)
     {
-        Serial.println("\r\n====== HTTP Response From Arduino ======");
-        Serial.write(data, dataSize);
-        Serial.println("\r\n========================================");
+        Serial.print("Command: ");
+        Serial.println(command);
     }
-    long int time = millis();
-    while ((time + timeout) > millis())
+    unsigned long start = millis();
+    while (millis() - start < timeout)
     {
-        while (esp8266.available())
+        if (esp8266.available())
         {
-            // The esp has data so display its output to the serial window
-            char c = esp8266.read(); // read the next character.
+            char c = esp8266.read();
             response += c;
         }
     }
     if (debug)
     {
-        Serial.print(response);
+        Serial.println(response);
     }
     return response;
+
+    // String response = "";
+    // int dataSize = command.length();
+    // char data[dataSize];
+    // command.toCharArray(data, dataSize);
+    // esp8266.write(data, dataSize); // send the read character to the esp8266
+    // if (debug)
+    // {
+    //     Serial.println("\r\n====== HTTP Response From Arduino ======");
+    //     Serial.write(data, dataSize);
+    //     Serial.println("\r\n========================================");
+    // }
+    // long int time = millis();
+    // while ((time + timeout) > millis())
+    // {
+    //     while (esp8266.available())
+    //     {
+    //         // The esp has data so display its output to the serial window
+    //         char c = esp8266.read(); // read the next character.
+    //         response += c;
+    //     }
+    // }
+    // if (debug)
+    // {
+    //     Serial.print(response);
+    // }
+    // return response;
 }
 
 /*
    Name: sendHTTPResponse
    Description: Function that sends HTTP 200, HTML UTF-8 response
 */
-void sendHTTPResponse(char connectionId, String content)
+void sendHTTPResponse(char connectionId)
 {
     // build HTTP response
-    Serial.print(content);
+    String body;
     String httpResponse;
     String httpHeader;
+    // HTTP Body
+    body = "<!DOCTYPE html>\r\n";
+    body += "<html>\r\n";
+    body += "<head>\r\n";
+    body += "<meta charset=\"UTF-8\">\r\n";
+    body += "<title>ESP8266</title>\r\n";
+    body += "</head>\r\n";
+    body += "<body>\r\n";
+    body += "<h1>ESP8266</h1>\r\n";
+    body += "<p>Connection ID: ";
+    body += connectionId;
+    body += "</p>\r\n";
+    body += "<p>Heating: ";
+    body += Heated;
+    body += "</p>\r\n";
+    body += "</body>\r\n";
+    body += "</html>\r\n";
     // HTTP Header
-    httpHeader = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\n";
-    httpHeader += "Content-Length: ";
-    httpHeader += content.length();
-    httpHeader += "\r\n";
+    httpHeader = "HTTP/1.1 200 OK\r\n";
+    httpHeader += "Content-Type: text/html; charset=UTF-8\r\n";
     httpHeader += "Connection: close\r\n";
-    httpHeader += "response: \"";
-    httpHeader += content;
-    httpResponse = httpHeader + "\"\r\n "; // There is a bug in this code: the last character of "content" is not sent, I cheated by adding this extra space
+    httpHeader += "Content-Length: ";
+    httpHeader += body.length();
+    httpHeader += "\r\n\r\n";
+    // HTTP Response
+    httpResponse = httpHeader + body;
+    // send the response
+    Serial.println("send CIP Data");
     sendCIPData(connectionId, httpResponse);
 }
 
@@ -261,14 +286,12 @@ void sendHTTPResponse(char connectionId, String content)
 */
 void sendCIPData(char connectionId, String data)
 {
-    String test = "testing";
     String cipSend = "AT+CIPSEND=";
     cipSend += connectionId;
     cipSend += ",";
-    cipSend += test.length();
+    cipSend += data.length();
     cipSend += "\r\n";
-    cipSend += test;
-    cipSend += "\r\n";
+    Serial.println("CIPSEND Command");
     sendCommand(cipSend, 1000, DEBUG);
     sendData(data, 1000, DEBUG);
 }
@@ -282,6 +305,7 @@ void sendCIPData(char connectionId, String data)
 String sendCommand(String command, const int timeout, boolean debug)
 {
     String response = "";
+    char c;
     esp8266.print(command); // send the read character to the esp8266
     long int time = millis();
     while ((time + timeout) > millis())
@@ -289,13 +313,18 @@ String sendCommand(String command, const int timeout, boolean debug)
         while (esp8266.available())
         {
             // The esp has data so display its output to the serial window
-            char c = esp8266.read(); // read the next character.
+            c = esp8266.read(); // read the next character.
             response += c;
+        }
+        if (c == '>')
+        {
+            Serial.println("> found");
+            break;
         }
     }
     if (debug)
     {
-        Serial.print(response);
+        Serial.println("Response: " + response);
     }
     return response;
 }

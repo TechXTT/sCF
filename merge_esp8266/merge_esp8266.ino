@@ -283,18 +283,18 @@ boolean read_until_ESP(const char keyword1[], int key_size, int timeout_val, byt
 
 boolean read_ESP(int timeout_val) {
   long int time = millis();
+  String response = "";
+  char c;
   int scratch_length = 1;
   while ((time + timeout_val) > millis()) {
     while (ESP8266.available()) {
-      char c = ESP8266.read();
-      scratch_data_from_ESP[scratch_length] = c; // starts at 1
-      scratch_data_from_ESP[0] = scratch_length;          // [0] is used to hold the length of the array
-      scratch_length++;                                   // increment the length
+      c = ESP8266.read();
+      response += c;                                 // increment the length
+      delay(1);
     }
   }
   Serial.println("read_ESP response: ");
-  for ( int i = 1; i < scratch_data_from_ESP[0] + 1; i++)
-    Serial.print(scratch_data_from_ESP[i]);
+  Serial.println(response);
   Serial.println("");
 }
 
