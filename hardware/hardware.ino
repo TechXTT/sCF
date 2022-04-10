@@ -1,6 +1,5 @@
+#include <ArduinoJson.h>
 #include <SoftwareSerial.h>
-
-#define DEBUG true
 
 SoftwareSerial esp8266(3, 2);
 
@@ -8,27 +7,17 @@ const int longRelay = 10;
 const int shortRelay = 11;
 const int LedIndicator = 9;
 
-bool Heated = false;
-bool found = false;
+String sCFState = "Cold";
 
-String SSID = "LightCore 2.5Ghz";
-String PASSWORD = "avgust14martin";
-String host = "192.168.88.241";
-String path = "/esp_test/esp_test";
-String port = "80";
-
-int Count = 0;
-int CountTime = 0;
-
-//StaticJsonBuffer<200> jsonBuffer;
-//JsonObject &root = jsonBuffer.createObject();
-
+StaticJsonBuffer<200> jsonBuffer;
+JsonObject &root = jsonBuffer.createObject();
 void setup()
 {
+
   Serial.begin(115200);
   esp8266.begin(115200);
   sendCommand("AT+RST\r\n", 5, "OK");
-  sendCommand("AT+CWJAP=\"" + SSID + "\",\"" + PASSWORD + "\"\r\n", 20, "WIFI CONNECTED");
+  sendCommand("AT+CWJAP=\"LightCore 2.5Ghz\",\"avgust14martin\"\r\n", 20, "WIFI CONNECTED");
   sendCommand("AT+CWMODE=3\r\n", 5, "OK");
   sendCommand("AT+CIPMUX=1\r\n", 5, "OK");
   sendCommand("AT+CIPSERVER=1,80\r\n", 20, "OK");
@@ -36,10 +25,7 @@ void setup()
   pinMode(longRelay, OUTPUT);
   pinMode(shortRelay, OUTPUT);
   pinMode(LedIndicator, OUTPUT);
-  digitalWrite(longRelay, HIGH);
-  digitalWrite(shortRelay, HIGH);
-  digitalWrite(LedIndicator, HIGH);
-  delay(1000);
+
   digitalWrite(longRelay, LOW);
   digitalWrite(shortRelay, LOW);
   digitalWrite(LedIndicator, LOW);
@@ -66,16 +52,6 @@ void loop()
       Serial.println("CONNID: " + connectionId);
       if (command == '1')
       {
-        // digitalWrite(RELAY_PIN, LOW);
-        // delay(1500);
-        // digitalWrite(RELAY_PIN, HIGH);
-        // String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(res.length());
-        // sendCommandToesp(cipSend, 4, ">");
-        // sendData(res);
-        // String closeCommand = "AT+CIPCLOSE=";
-        // closeCommand += connectionId;
-        // closeCommand += "\r\n";
-        // sendCommandToesp(closeCommand, 5, "OK");
 
         command = (esp8266.read());
         if (command == '1')
@@ -92,7 +68,6 @@ void loop()
           closeCommand += connectionId;
           closeCommand += "\r\n";
           sendCommand(closeCommand, 5, "OK");
-          Heated = true;
         }
         else if (command == '2')
         {
@@ -108,43 +83,65 @@ void loop()
           closeCommand += connectionId;
           closeCommand += "\r\n";
           sendCommand(closeCommand, 5, "OK");
-          Heated = true;
         }
+        UpdateSCFState();
+        Serial.println(sCFState);
+      }
+      else if (command == '2')
+      {
+        root["sCFState"] = sCFState;
+        String data;
+        root.printTo(data);
+
+        String request = "" + String("HTTP/1.1 200 OK\r\n") +
+                         "Connection: close\r\n" +
+                         "Content-Length: " + data.length() + "\r\n" +
+                         "Content-Type: application/json\r\n" +
+                         "\r\n" + data;
+
+        String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(request.length()) + "\r\n";
+        sendCommand(cipSend, 4, ">");
+        sendData(request);
+        String closeCommand = "AT+CIPCLOSE=";
+        closeCommand += connectionId;
+        closeCommand += "\r\n";
+        sendCommand(closeCommand, 5, "OK");
       }
     }
   }
 }
+
+void UpdateSCFState()
+{
+  if (sCFState == "Cold")
+  {
+    sCFState = "Heating";
+  }
+  else if (sCFState == "Heating")
+  {
+    sCFState = "Hot";
+  }
+  else if (sCFState == "Hot")
+  {
+    sCFState = "Cold";
+  }
+}
+
 void sendCommand(String command, int delay, char reply[])
 {
-  Serial.print(Count);
-  Serial.print(" at command => ");
+  int CountTime = 0;
+  Serial.print("AT command => ");
   Serial.println(command);
   while (CountTime < delay)
   {
     esp8266.print(command);
     if (esp8266.find(reply))
     {
-      found = true;
+      Serial.println("Command sent");
       break;
     }
     CountTime++;
   }
-
-  if (found)
-  {
-    Serial.println("Command sent");
-    Count++;
-    CountTime = 0;
-  }
-  else
-  {
-    Serial.println("Command not sent");
-    Count = 0;
-    CountTime = 0;
-    
-  }
-
-  found = false;
 }
 
 void sendData(String Request)
@@ -152,5 +149,4 @@ void sendData(String Request)
   Serial.println(Request);
   esp8266.println(Request);
   delay(1500);
-  Count++;
 }
