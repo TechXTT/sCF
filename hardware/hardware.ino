@@ -61,13 +61,7 @@ void loop()
           delay(1500);
           digitalWrite(longRelay, LOW);
           digitalWrite(LedIndicator, LOW);
-          String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(res.length()) + "\r\n";
-          sendCommand(cipSend, 4, ">");
-          sendData(res);
-          String closeCommand = "AT+CIPCLOSE=";
-          closeCommand += connectionId;
-          closeCommand += "\r\n";
-          sendCommand(closeCommand, 5, "OK");
+          sendState(connectionId);
         }
         else if (command == '2')
         {
@@ -76,55 +70,67 @@ void loop()
           delay(1500);
           digitalWrite(shortRelay, LOW);
           digitalWrite(LedIndicator, LOW);
-          String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(res.length()) + "\r\n";
-          sendCommand(cipSend, 4, ">");
-          sendData(res);
-          String closeCommand = "AT+CIPCLOSE=";
-          closeCommand += connectionId;
-          closeCommand += "\r\n";
-          sendCommand(closeCommand, 5, "OK");
+          sendState(connectionId);
         }
-        UpdateSCFState();
+        UpdateSCFState(1);
         Serial.println(sCFState);
       }
       else if (command == '2')
       {
-        root["sCFState"] = sCFState;
-        String data;
-        root.printTo(data);
-
-        String request = "" + String("HTTP/1.1 200 OK\r\n") +
-                         "Connection: close\r\n" +
-                         "Content-Length: " + data.length() + "\r\n" +
-                         "Content-Type: application/json\r\n" +
-                         "\r\n" + data;
-
-        String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(request.length()) + "\r\n";
+        sendState(connectionId);
+        Serial.println(sCFState);
+      }
+      else if (command == '3')
+      {
+        String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(res.length()) + "\r\n";
         sendCommand(cipSend, 4, ">");
-        sendData(request);
+        sendData(res);
         String closeCommand = "AT+CIPCLOSE=";
         closeCommand += connectionId;
         closeCommand += "\r\n";
         sendCommand(closeCommand, 5, "OK");
+        UpdateSCFState(0);
+        Serial.println(sCFState);
       }
     }
   }
 }
 
-void UpdateSCFState()
+void UpdateSCFState(int request)
 {
-  if (sCFState == "Cold")
+  if (sCFState == "Cold" && request)
   {
     sCFState = "Heating";
   }
-  else if (sCFState == "Heating")
+  else if (sCFState == "Heating" && !request)
   {
     sCFState = "Hot";
   }
-  else if (sCFState == "Hot")
+  else if (sCFState == "Hot" && !request)
   {
     sCFState = "Cold";
   }
+}
+
+void sendState(int connectionId)
+{
+  root["sCFState"] = sCFState;
+  String data;
+  root.printTo(data);
+
+  String request = "" + String("HTTP/1.1 200 OK\r\n") +
+                   "Connection: close\r\n" +
+                   "Content-Length: " + data.length() + "\r\n" +
+                   "Content-Type: application/json\r\n" +
+                   "\r\n" + data;
+
+  String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(request.length()) + "\r\n";
+  sendCommand(cipSend, 4, ">");
+  sendData(request);
+  String closeCommand = "AT+CIPCLOSE=";
+  closeCommand += connectionId;
+  closeCommand += "\r\n";
+  sendCommand(closeCommand, 5, "OK");
 }
 
 void sendCommand(String command, int delay, char reply[])
