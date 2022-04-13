@@ -27,6 +27,50 @@ app.get("/get_state", async (req, res) => {
     );
 });
 
+app.get("/turn_off", async (req, res) => {
+  const url = "http://192.168.88.200:80/?command=13";
+  axios.defaults.headers.get["Access-Control-Allow-Origin"] = "*";
+
+  axios
+    .get(url, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        Accept: "application/json",
+      },
+      crossdomain: true,
+    })
+    .then(
+      (response) => {
+        res.send(response.data);
+      },
+      (error) => {
+        console.log(error);
+      }
+    );
+});
+
+app.get("/update_state", async (req, res) => {
+  const url = "http://192.168.88.200:80/?command=3";
+  axios.defaults.headers.get["Access-Control-Allow-Origin"] = "*";
+
+  axios
+    .get(url, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        Accept: "application/json",
+      },
+      crossdomain: true,
+    })
+    .then(
+      (response) => {
+        res.send(response.data);
+      },
+      (error) => {
+        console.log(error);
+      }
+    );
+});
+
 app.get("/press_button_1", async (req, res) => {
   const url = "http://192.168.88.200:80/?command=11";
   axios.defaults.headers.get["Access-Control-Allow-Origin"] = "*";
