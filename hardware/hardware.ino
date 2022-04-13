@@ -1,12 +1,17 @@
 #include <ArduinoJson.h>
 #include <SoftwareSerial.h>
+#include <RTClib.h>
+#include <Wire.h>
 
+RTC_DS1307 rtc;
 SoftwareSerial esp8266(3, 2);
 
 const int longRelay = 10;
 const int shortRelay = 11;
 const int LedIndicator = 9;
 
+int timerBool = 0;
+DateTime timer;
 String sCFState = "Cold";
 
 StaticJsonBuffer<200> jsonBuffer;
@@ -21,6 +26,21 @@ void setup()
   sendCommand("AT+CWMODE=3\r\n", 5, "OK");
   sendCommand("AT+CIPMUX=1\r\n", 5, "OK");
   sendCommand("AT+CIPSERVER=1,80\r\n", 20, "OK");
+
+  if (!rtc.begin())
+  {
+    Serial.println("Couldn't find RTC");
+  }
+
+  if (!rtc.isrunning())
+  {
+    Serial.println("RTC is NOT running!");
+    // following line sets the RTC to the date & time this sketch was compiled
+    rtc.adjust(DateTime(__DATE__, __TIME__));
+    // This line sets the RTC with an explicit date & time, for example to set
+    // January 21, 2014 at 3am you would call:
+    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+  }
 
   pinMode(longRelay, OUTPUT);
   pinMode(shortRelay, OUTPUT);
@@ -61,7 +81,7 @@ void loop()
           delay(1500);
           digitalWrite(longRelay, LOW);
           digitalWrite(LedIndicator, LOW);
-          sendState(connectionId);
+          UpdateSCFState(1);
         }
         else if (command == '2')
         {
@@ -70,28 +90,44 @@ void loop()
           delay(1500);
           digitalWrite(shortRelay, LOW);
           digitalWrite(LedIndicator, LOW);
-          sendState(connectionId);
+          UpdateSCFState(1);
         }
-        UpdateSCFState(1);
-        Serial.println(sCFState);
+        else if (command == '3')
+        {
+          digitalWrite(shortRelay, HIGH);
+          digitalWrite(longRelay, HIGH);
+          digitalWrite(LedIndicator, HIGH);
+          delay(1500);
+          digitalWrite(shortRelay, LOW);
+          digitalWrite(longRelay, LOW);
+          digitalWrite(LedIndicator, LOW);
+          UpdateSCFState(0);
+        }
+        sendState(connectionId);
+        Serial.println("button: " + command);
       }
       else if (command == '2')
       {
+        delay(1000);
         sendState(connectionId);
-        Serial.println(sCFState);
+        Serial.println("Get state");
       }
       else if (command == '3')
       {
-        String cipSend = "AT+CIPSEND=" + String(connectionId) + "," + String(res.length()) + "\r\n";
-        sendCommand(cipSend, 4, ">");
-        sendData(res);
-        String closeCommand = "AT+CIPCLOSE=";
-        closeCommand += connectionId;
-        closeCommand += "\r\n";
-        sendCommand(closeCommand, 5, "OK");
+        delay(1000);
         UpdateSCFState(0);
-        Serial.println(sCFState);
+        sendState(connectionId);
+        Serial.println("update state");
       }
+    }
+  }
+
+  if (timerBool == 1)
+  {
+    if (rtc.now() >= timer)
+    {
+      UpdateSCFState(0);
+      timerBool = 0;
     }
   }
 }
@@ -100,11 +136,9 @@ void UpdateSCFState(int request)
 {
   if (sCFState == "Cold" && request)
   {
-    sCFState = "Heating";
-  }
-  else if (sCFState == "Heating" && !request)
-  {
     sCFState = "Hot";
+    timer = DateTime(rtc.now() + TimeSpan(0, 0, 30, 0));
+    timerBool = 1;
   }
   else if (sCFState == "Hot" && !request)
   {
