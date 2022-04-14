@@ -5,8 +5,52 @@ var cors = require("cors");
 const axios = require("axios");
 
 app.use(cors());
-app.get("/fuck_cors", async (req, res) => {
+app.get("/get_state", async (req, res) => {
   const url = "http://192.168.88.200:80/?command=2";
+  axios.defaults.headers.get["Access-Control-Allow-Origin"] = "*";
+
+  axios
+    .get(url, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        Accept: "application/json",
+      },
+      crossdomain: true,
+    })
+    .then(
+      (response) => {
+        res.send(response.data);
+      },
+      (error) => {
+        console.log(error);
+      }
+    );
+});
+
+app.get("/turn_off", async (req, res) => {
+  const url = "http://192.168.88.200:80/?command=13";
+  axios.defaults.headers.get["Access-Control-Allow-Origin"] = "*";
+
+  axios
+    .get(url, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        Accept: "application/json",
+      },
+      crossdomain: true,
+    })
+    .then(
+      (response) => {
+        res.send(response.data);
+      },
+      (error) => {
+        console.log(error);
+      }
+    );
+});
+
+app.get("/update_state", async (req, res) => {
+  const url = "http://192.168.88.200:80/?command=3";
   axios.defaults.headers.get["Access-Control-Allow-Origin"] = "*";
 
   axios
@@ -71,4 +115,4 @@ app.get("/press_button_2", async (req, res) => {
     );
 });
 
-app.listen(8080, () => console.log(`Started server at http://localhost:8080!`));
+app.listen(5643, () => console.log(`Started server at http://localhost:5643!`));
