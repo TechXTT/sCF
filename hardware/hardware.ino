@@ -46,8 +46,8 @@ void setup()
   pinMode(shortRelay, OUTPUT);
   pinMode(LedIndicator, OUTPUT);
 
-  digitalWrite(longRelay, LOW);
-  digitalWrite(shortRelay, LOW);
+  digitalWrite(longRelay, HIGH);
+  digitalWrite(shortRelay, HIGH);
   digitalWrite(LedIndicator, LOW);
 }
 
@@ -76,31 +76,32 @@ void loop()
         command = (esp8266.read());
         if (command == '1')
         {
-          digitalWrite(longRelay, HIGH);
-          digitalWrite(LedIndicator, HIGH);
-          delay(1500);
-          digitalWrite(longRelay, LOW);
+          digitalWrite(shortRelay, LOW);
           digitalWrite(LedIndicator, LOW);
+          delay(1500);
+          digitalWrite(shortRelay, HIGH);
+          digitalWrite(LedIndicator, HIGH);
           UpdateSCFState(1);
         }
         else if (command == '2')
         {
-          digitalWrite(shortRelay, HIGH);
-          digitalWrite(LedIndicator, HIGH);
-          delay(1500);
-          digitalWrite(shortRelay, LOW);
+          digitalWrite(longRelay, LOW);
           digitalWrite(LedIndicator, LOW);
+          delay(1500);
+          digitalWrite(longRelay, HIGH);
+          digitalWrite(LedIndicator, HIGH);
+
           UpdateSCFState(1);
         }
         else if (command == '3')
         {
-          digitalWrite(shortRelay, HIGH);
-          digitalWrite(longRelay, HIGH);
-          digitalWrite(LedIndicator, HIGH);
-          delay(1500);
           digitalWrite(shortRelay, LOW);
           digitalWrite(longRelay, LOW);
           digitalWrite(LedIndicator, LOW);
+          delay(1500);
+          digitalWrite(shortRelay, HIGH);
+          digitalWrite(longRelay, HIGH);
+          digitalWrite(LedIndicator, HIGH);
           UpdateSCFState(0);
         }
         sendState(connectionId);
